@@ -18,15 +18,15 @@ TITLE Program 5		(prog5.asm)
 INCLUDE Irvine32.inc
 
 ; constants
-RANGE_MIN = 1
-RANGE_MAX = 300
+RANGE_MIN = 15
+RANGE_MAX = 200
 
 .data
 	; interface strings
-	intro		BYTE		"Welcome to the Composite Number Spreadsheet", 13, 10, "Programmed by Nils Streedain", 13, 10, "This program is capable of generating a list of composite numbers.", 13, 10, "Simply let me know how many you would like to see.", 13, 10, "I'll accept orders for up to 300 composites.", 13, 10, 0
+	intro		BYTE		"Sorting Random Integers", 13, 10, "Programmed by Nils Streedain", 13, 10, "This program generates random numbers in the range [100 .. 999],", 13, 10, "displays the original list, sorts the list, and calculates the", 13, 10, "median value. Finally, it displays the list sorted in descending order.", 13, 10, 0
 	;extra		BYTE		"**EC: Calculate and display the average as a floating-point number, rounded to the nearest .001.", 13, 10, 0
-	prompt		BYTE		"How many composites do you want to view? [1 .. 300]: ", 0
-	error		BYTE		"Out of range. Please try again.", 13, 10, 0
+	prompt		BYTE		"How many numbers should be generated? [15 .. 200]: ", 0
+	error		BYTE		"Invalid input", 13, 10, 0
 	bye			BYTE		13, 10, "Thanks for using my program!", 0
 	spacer		BYTE		"   ", 0
 
