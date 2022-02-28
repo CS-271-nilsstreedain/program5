@@ -29,9 +29,8 @@ HI = 999
 	prompt		BYTE		"How many numbers should be generated? [15 .. 200]: ", 0
 	error		BYTE		"Invalid input", 13, 10, 0
 	unsortTitle	BYTE		"The unsorted random numbers:", 13, 10, 0
-	medTitle1	BYTE		"The median is ", 0
-	medTitle2	BYTE		".", 13, 10, 0
-	sortTitle	BYTE		"The sorted list:", 13, 11, 0
+	medTitle	BYTE		13, 10, "The median is ", 0
+	sortTitle	BYTE		".", 13, 10, "The sorted list:", 13, 11, 0
 	bye			BYTE		13, 10, "Thanks for using my program!", 0
 
 	; program variables
@@ -62,7 +61,10 @@ main PROC
 	push	request
 	call	sortList		; Sorts the array usinging selection sort
 
-	;call	displayMedian
+	push	OFFSET list
+	push	request
+	push	OFFSET medTitle
+	call	displayMedian	; Prints the median element to the console
 
 	push	OFFSET list
 	push	request
@@ -82,27 +84,22 @@ main ENDP
 introduction PROC
 	push	ebp
 	mov		ebp, esp
-	push	edx
 	
 	mov		edx, [ebp + 8]	; intro
 	call	WriteString
 
-	pop		edx
 	pop		ebp
 	ret		4
 introduction ENDP
 
 ; Description:				Repeatedly prompts the user for a number until the user inputs a valid integer between LO & HI
-; Receives:					[ebp + 16]:	Prompt string
-;							[ebp + 12]:	Error string
-;							[ebp + 8]:	request
+; Receives:					[ebp + 16]:	Prompt string, [ebp + 12]:	Error string, [ebp + 8]:	request
 ; Returns:					Number input by user to request
 ; Preconditions:			Prompt, Error, & request must be given
 ; Register changed:			eax, ebx, edx
 getData PROC
 	push	ebp
 	mov		ebp, esp
-	pushad
 
 promptUser:
 	mov		edx, [ebp + 16]	; prompt string
@@ -122,21 +119,18 @@ valid:						; returns when valid number is given
 	mov		ebx, [ebp + 8]	; request int
 	mov		[ebx], eax
 	
-	popad
 	pop		ebp
 	ret		12
 getData ENDP
 
 ; Description:				Fills the given array with random number values between LO & HI
-; Receives:					[ebp + 8]:	Length
-;							[ebp + 12]:	Array
+; Receives:					[ebp + 8]:	Length, [ebp + 12]:	Array
 ; Returns:					Array filled with random numbers
 ; Preconditions:			Array & length must be provided
 ; Register changed:			eax, ecx, esi
 fillArray PROC
 	push	ebp
 	mov		ebp, esp
-	pushad
 	
 	mov		ecx, [ebp + 8]	; num times to loop
 	mov		esi, [ebp + 12]	; list ref
@@ -150,57 +144,18 @@ fillLoop:
 	add		esi, 4
 	loop	fillLoop		; loop over every array element
 
-	popad
 	pop		ebp
 	ret		8
 fillArray ENDP
 
-; Description:				Prints a string representation of a given array
-; Receives:					[ebp + 8]:	Title
-;							[ebp + 12]:	Length
-;							[ebp + 16]:	List
-; Returns:					N/A
-; Preconditions:			Length must be the length of the array
-; Register changed:			eax, ebx, ecx, edx, esi, al
-displayList PROC
-	push	ebp
-	mov		ebp, esp
-	pushad
-
-	mov		edx, [ebp + 8]	; print title
-	call	WriteString
-	mov		ecx, [ebp + 12]	; num times to loop
-	mov		esi, [ebp + 16]	; list ref
-	mov		ebx, 0			; newline counter
-displayLoop:
-	mov		eax, [esi]
-	call	WriteDec		; print next array element
-	mov		al, 9
-	call	WriteChar		; print tab
-	inc		ebx
-	cmp		ebx, 10
-	jl		noNewLine
-	call	Crlf
-	mov		ebx, 0			; new line every 10 elements
-noNewLine:
-	add		esi, 4
-	loop	displayLoop		; loop over length of array
-
-	popad
-	pop		ebp
-	ret		12
-displayList ENDP
-
 ; Description:				Sorts the given number array from largest to smallest
-; Receives:					[ebp + 8]:	array
-;							[ebp + 12]:	length
-; Returns:					sorted array in array
-; Preconditions:			array must contain number elements & length must be the length of array
+; Receives:					[ebp + 8]:	Array, [ebp + 12]:	Length
+; Returns:					Sorted array in array
+; Preconditions:			Array must contain number elements & length must be the length of array
 ; Register changed:			eax, ebx, ecx, edx, esi
 sortList PROC
 	push	ebp
 	mov		ebp, esp
-	pushad
 
 	mov		ecx, [ebp + 8]	; num times to loop
 	mov		esi, [ebp + 12]	; list ref
@@ -224,15 +179,13 @@ noSwap:
 	add		esi, 4
 	loop	iterateLoop
 
-	popad
 	pop		ebp
 	ret		8
 sortList ENDP
 
 ; Description:				Swaps to elements in a number array using their given addresses
-; Receives:					[ebp + 8]:	Addr1
-;							[ebp + 12]:	Addr2
-; Returns:					N/A
+; Receives:					[ebp + 8]:	Addr1, [ebp + 12]:	Addr2
+; Returns:					Val of Addr1 in Addr2 and val of Addr2 in Addr1
 ; Preconditions:			Addr must be valid addresses to elements in an array
 ; Register changed:			eax, ebx, ecx, edx
 exchange PROC
@@ -251,5 +204,77 @@ exchange PROC
 	pop		ebp
 	ret		8
 exchange ENDP
+
+; Description:				Finds & prints the median element of an array
+; Receives:					[ebp + 8]:	Title, [ebp + 12]:	Length, [ebp + 16]:	Array
+; Returns:					N/A
+; Preconditions:			Array must contain number elements & length must be the length of the array
+; Register changed:			eax, ebx, ecx, edx, esi
+displayMedian PROC
+	push	ebp
+	mov		ebp, esp
+	
+	mov		edx, [ebp + 8]
+	call	WriteString		; prints median text
+	mov		esi, [ebp + 16]	; array
+	mov		eax, [ebp + 12]	; length
+	mov		ebx, 2
+	cdq
+	div		ebx
+	cmp		edx, 0			; checks if length is even by seeing if it's divisible by 2
+	je		isEven
+	mov		ebx, 4
+	mul		ebx				; multiply by to to find middle address
+	mov		eax, [esi + eax]; when length is odd, median is 1/2 the length
+	jmp		medCalculated
+isEven:
+	mov		ebx, 4
+	mul		ebx				; multiply by to to find middle address
+	add		eax, 4
+	mov		ebx, [esi + eax] ; find upper median
+	sub		eax, 8
+	mov		eax, [esi + eax] ; fina lower median
+	add		eax, ebx
+	mov		ebx, 2
+	cdq
+	div		ebx
+medCalculated:
+	call	WriteDec		; length divided in last step, just need to calc address
+
+	pop		ebp
+	ret		16
+displayMedian ENDP
+
+; Description:				Prints a string representation of a given array
+; Receives:					[ebp + 8]:	Title, [ebp + 12]:	Length, [ebp + 16]:	Array
+; Returns:					N/A
+; Preconditions:			Length must be the length of the array
+; Register changed:			eax, ebx, ecx, edx, esi, al
+displayList PROC
+	push	ebp
+	mov		ebp, esp
+
+	mov		edx, [ebp + 8]	; print title
+	call	WriteString
+	mov		ecx, [ebp + 12]	; num times to loop
+	mov		esi, [ebp + 16]	; list ref
+	mov		ebx, 0			; newline counter
+displayLoop:
+	mov		eax, [esi]
+	call	WriteDec		; print next array element
+	mov		al, 9
+	call	WriteChar		; print tab
+	inc		ebx
+	cmp		ebx, 10
+	jl		noNewLine
+	call	Crlf
+	mov		ebx, 0			; new line every 10 elements
+noNewLine:
+	add		esi, 4
+	loop	displayLoop		; loop over length of array
+
+	pop		ebp
+	ret		12
+displayList ENDP
 
 END main
