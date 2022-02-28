@@ -18,30 +18,51 @@ TITLE Program 5		(prog5.asm)
 INCLUDE Irvine32.inc
 
 ; constants
-RANGE_MIN = 15
-RANGE_MAX = 200
+MIN = 15
+MAX = 200
+LO = 100
+HI = 999
 
 .data
 	; interface strings
-	intro		BYTE		"Sorting Random Integers", 13, 10, "Programmed by Nils Streedain", 13, 10, "This program generates random numbers in the range [100 .. 999],", 13, 10, "displays the original list, sorts the list, and calculates the", 13, 10, "median value. Finally, it displays the list sorted in descending order.", 13, 10, 0
-	;extra		BYTE		"**EC: Calculate and display the average as a floating-point number, rounded to the nearest .001.", 13, 10, 0
+	intro		BYTE		"Sorting Random Integers", 13, 10, "Programmed by Nils Streedain", 13, 10, "This program generates random numbers in the range [100 .. 999],", 13, 10, "displays the original list, sorts the list, and calculates the", 13, 10, "median value. Finally, it displays the list sorted in descending order.", 13, 10, "**EC: Random TA Name: Megan Black", 13, 10, 0
 	prompt		BYTE		"How many numbers should be generated? [15 .. 200]: ", 0
 	error		BYTE		"Invalid input", 13, 10, 0
+	unsortTitle	BYTE		"The unsorted random numbers:", 10, 13, 0
 	bye			BYTE		13, 10, "Thanks for using my program!", 0
-	spacer		BYTE		"   ", 0
 
 	; program variables
-	num			DWORD		?
-	curr		DWORD		0
-	newline		DWORD		0
+	request		DWORD		?
+	list		DWORD		MAX DUP(?)
 
 .code
 main PROC
+	push	OFFSET intro
 	call	introduction	; Prints the program title, author's name, & extra credit tag.
-	call	getUserData		; Repeatedly prompts the user for a number until one is given in the range 1 to 300.
-	call	showComposites	; Loops a num ammount of composite numbers
-	call	goodbye			; tells the user goodbye & prints their name
-	exit					; exit to operating system
+	
+	push	OFFSET prompt
+	push	OFFSET error
+	push	OFFSET request
+	call	getData			; Repeatedly prompts the user for a number until one is given in the range 1 to 300.
+
+	mov		eax, request
+	call	WriteDec
+	
+	push	OFFSET list
+	push	request
+	call	fillArray
+
+	;call	sortList
+	;call	displayMedian
+	
+	push	OFFSET list
+	push	request
+	push	OFFSET unsortTitle
+	call	displayList
+
+	push	OFFSET bye
+	call	introduction			; tells the user goodbye
+	exit							; exit to operating system
 main ENDP
 
 ; Description:				Prints the program title, author's name, extra credit stats, & instructions
@@ -50,11 +71,16 @@ main ENDP
 ; Preconditions:			intro must be defined
 ; Register changed:			edx
 introduction PROC
-	mov		edx, OFFSET intro
+	push	ebp
+	mov		ebp, esp
+	push	edx
+	
+	mov		edx, [ebp + 8]	; intro
 	call	WriteString
-	;mov	edx, OFFSET extra
-	;call	WriteString
-	ret
+
+	pop		edx
+	pop		ebp
+	ret		4
 introduction ENDP
 
 ; Description:				Repeatedly prompts the user for a number until the user inputs a valid integer between 1-300
@@ -62,110 +88,100 @@ introduction ENDP
 ; Returns:					N/A
 ; Preconditions:			prompt must be defined
 ; Register changed:			eax, edx
-getUserData PROC
-	mov		edx, OFFSET prompt
+getData PROC
+	push	ebp
+	mov		ebp, esp
+	pushad
+
+promptUser:
+	mov		edx, [ebp + 16]	; propmt string
 	call	WriteString
 	call	ReadInt
-	mov		num, eax
-	call	validate
-	ret
-getUserData ENDP
 
-; Description:				Checks if a number is between 1-300, if it is not, the user is asked for a new number, otherwise the procedure is returned
-; Receives:					num:		number to check if valid
-;							RANGE_MIN:	min valid number
-;							RANGE_MAX:	max valid number
-;							error:		error message to print if out of range
-; Returns:					N/A
-; Preconditions:			num, RANGE_MIN & RANGE_MAX must be defined
-; Register changed:			eax, edx
-validate PROC
-	cmp		num, RANGE_MIN	; validates the input number is between min & max
-	jl		outOfRange		; if it is not valid, outOfRange is called,
-	cmp		num, RANGE_MAX	; otherwise, valid is called
+	cmp		eax, MIN		; validates the input number is between min & max
+	jl		outOfRange		; if invalid, outOfRange is called
+	cmp		eax, MAX
 	jg		outOfRange
 	jmp		valid
 outOfRange:					; Gives the user an out of range error & then jumps to numPrompt to get another user input.
-	mov		edx, OFFSET error
+	mov		edx, [ebp + 12]	; error string
 	call	WriteString
-	call	getUserData
+	jmp		promptUser
 valid:						; Returns when a valid number is given by the user.
-	ret
-validate ENDP
+	mov		ebx, [ebp + 8]	; request int
+	mov		[ebx], eax
+	
+	popad
+	pop		ebp
+	ret		12
+getData ENDP
 
-; Description:				Prints a num amount of composite numbers to the console
-; Receives:					num:		number of composites to print
-;							spacer:		string used by isComposite to space output numbers
-; Returns:					N/A
-; Preconditions:			num & spacer must be defined
-; Register changed:			eax, ebx, ecx, edx
-showComposites PROC
-	mov		ecx, num		; loops num times, increasing curr each time and calling isComposite to
-findComposite:				; check if curr is composite, if not ecx is increased to account for 
-	inc		curr			; loop decreasing it
-	call	isComposite
+; Description:				
+; Receives:					
+; Returns:					
+; Preconditions:			
+; Register changed:			
+fillArray PROC
+	push	ebp
+	mov		ebp, esp
+	pushad
+	
+	mov		ecx, [ebp + 8]	; num times to loop
+	mov		esi, [ebp + 12]	; list ref
 
-	loop	findComposite
-	ret
-showComposites ENDP
+fillLoop:
+	mov		eax, HI
+	sub		eax, LO
+	inc		eax
 
-; Description:				Checks if curr is a composite number, if so it is printed to the console
-; Receives:					curr:		number to check if composite
-;							spacer:		string used to space output numbers
-; Returns:					N/A
-; Preconditions:			curr & spacer must be defined
-; Register changed:			eax, ebx, ecx, edx
-isComposite PROC
-	cmp		curr, 4			; when curr < 4, it cannot be composite
-	jl		notComp
+	call	RandomRange
+	add		eax, LO
+	mov		[esi], eax
+	add		esi, 4
+	loop	fillLoop
 
-	mov		ebx, 1			; checks curr's divisible numbers between 2 & the square root of curr
-divisibleLoop:
-	inc		ebx				; increments number to check with (ebx) by 1 each loop
+	popad
+	pop		ebp
+	ret		8
+fillArray ENDP
 
-	mov		eax, curr		; checks if curr is divisible by ebx
-	cdq
-	div		ebx
-	cmp		edx, 0			; when remainer (edx) is 0, curr is divisible by ebx
-	je		isComp			; if curr is divisible by ebx, curr is a composite num
+; Description:				
+; Receives:					
+; Returns:					
+; Preconditions:			
+; Register changed:			
+displayList PROC
+	push	ebp
+	mov		ebp, esp
+	pushad
 
-	mov		eax, ebx		; loops divisibleLoop when ebx^2 <= curr
-	mul		ebx
-	cmp		eax, curr		
-	jle		divisibleLoop
-
-	jmp		notComp			; when a comp has not been found after looping, jump to notComp
-isComp:						; Prints the curr number when it is a composite
-	mov		eax, curr		
-	call	WriteDec
-	mov		edx, OFFSET spacer
-	call	WriteString		; prints curr with 3 spaces after
-
-	inc		newline			; after each comp is printed, neline is increased by 1
-	mov		eax, newline	; when newline is divisible by 10, a new line is printed
-	mov		ebx, 10			; this effectively prints a new line after each 10 comps
-	cdq
-	div		ebx
-	cmp		edx, 0
-	je		createNewline
-	ret						; if no line needs to be printed, isComposite gets returned
-createNewline:				; Prints a newline & returns procedure
-	call	Crlf
-	ret
-notComp:					; Increases ecx to account for the showComposites loop decreasing ecx, even when a comp was not found
-	inc		ecx
-	ret
-isComposite ENDP
-
-; Description:				Says goodbye to the user
-; Receives:					bye:		string used to say goodbye to the user
-; Returns:					N/A
-; Preconditions:			bye must be defined
-; Register changed:			ebx
-goodbye PROC
-	mov		edx, OFFSET bye	; say goodbye to the user
+	mov		edx, [ebp + 8]	; Print title
 	call	WriteString
-	ret
-goodbye ENDP
+
+	mov		ebx, 0			; newline counter
+	mov		ecx, [ebp + 12]	; num times to loop
+	mov		esi, [ebp + 16]	; list ref
+
+displayLoop:
+	mov		eax, [esi]
+	call	WriteDec
+
+	mov		al, 9
+	call	WriteChar
+
+	inc		ebx
+	cmp		ebx, 10
+	jl		noNewLine
+	call	Crlf
+	mov		ebx, 0
+
+noNewLine:
+	add		esi, 4
+	loop	displayLoop
+
+	popad
+	pop		ebp
+	ret		12
+displayList ENDP
 
 END main
