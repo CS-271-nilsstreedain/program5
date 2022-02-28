@@ -221,23 +221,20 @@ displayMedian PROC
 	mov		ebx, 2
 	cdq
 	div		ebx
-	cmp		edx, 0			; checks if length is even by seeing if it's divisible by 2
-	je		isEven
+	mov		ecx, edx		; Move remainder to ecx so edx is clear for mul
 	mov		ebx, 4
 	mul		ebx				; multiply by to to find middle address
+	cmp		ecx, 0			; checks if length is even by seeing if it's divisible by 2
+	je		isEven
 	mov		eax, [esi + eax]; when length is odd, median is 1/2 the length
 	jmp		medCalculated
 isEven:
-	mov		ebx, 4
-	mul		ebx				; multiply by to to find middle address
-	add		eax, 4
-	mov		ebx, [esi + eax] ; find upper median
-	sub		eax, 8
-	mov		eax, [esi + eax] ; fina lower median
+	mov		ebx, [esi + eax] ; find lower median
+	sub		eax, 4
+	mov		eax, [esi + eax] ; fina upper median
 	add		eax, ebx
 	mov		ebx, 2
-	cdq
-	div		ebx
+	div		ebx				; calc average of medians
 medCalculated:
 	call	WriteDec		; length divided in last step, just need to calc address
 
